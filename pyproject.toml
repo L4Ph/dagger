@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dagger"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Katsuyuki-Karasawa", email = "4ranci0ne@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+    "huggingface-hub>=0.23.3",
+    "pandas>=2.0.3",
+    "Pillow>=10.3.0",
+    "deepdanbooru>=1.0.2",
+    "onnxruntime>=1.18.0",
+    "opencv-python>=4.10.0.82",
+    "dartrs>=0.1.5",
+    "transformers>=4.41.2",
+    "torch>=2.3.1",
+]
+
+[project.urls]
+Documentation = "https://github.com/Katsuyuki-Karasawa/dagger#readme"
+Issues = "https://github.com/Katsuyuki-Karasawa/dagger/issues"
+Source = "https://github.com/Katsuyuki-Karasawa/dagger"
+
+[tool.hatch.version]
+path = "src/dagger/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/dagger tests}"
+
+[tool.coverage.run]
+source_pkgs = ["dagger", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/dagger/__about__.py",
+]
+
+[tool.coverage.paths]
+dagger = ["src/dagger", "*/dagger/src/dagger"]
+tests = ["tests", "*/dagger/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
