@@ -5,18 +5,9 @@ from PIL import Image
 from pathlib import Path
 import argparse
 from datetime import datetime
-from dartrs.dartrs import DartTokenizer
-from dartrs.utils import get_generation_config
-from dartrs.v2 import (
-    compose_prompt,
-    MixtralModel,
-    V2Model,
-)
+from tagger.dart import generate_dart_prompt
 
 from tagger.interrogators import interrogators
-
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 parser = argparse.ArgumentParser()
@@ -68,7 +59,7 @@ if args.cpu:
     interrogator.use_cpu()
 
 
-def parse_exclude_tags() -> set[str]:
+def parse_exclude_tags() -> "set[str]":
     if args.exclude_tags is None:
         return set()
 
@@ -87,7 +78,7 @@ def parse_exclude_tags() -> set[str]:
 
 def image_interrogate(
     image_path: Path, tag_escape: bool, exclude_tags: Iterable[str]
-) -> list[tuple[str, float]]:
+) -> 'list["tuple[str, float]"]':
     """
     Predictions from a image path
     """
@@ -95,7 +86,6 @@ def image_interrogate(
     result = interrogator.interrogate(im)
 
     filtered_tags = [(tag, conf) for tag, conf in result[1] if conf >= args.threshold]
-    print(f"Number of tags after filtering: {len(filtered_tags)}")
 
     postprocessed_tags = Interrogator.postprocess_tags(
         filtered_tags,
@@ -135,10 +125,12 @@ if args.dir:
         for tag, confidence in tags:
             print(f"{tag} : {confidence:.3f}")
 
-        tags_str = ", ".join([tag for tag, _ in tags])
+        high_confidence_tags = [tag for tag, confidence in tags if confidence >= 0.8]
+
+        output = generate_dart_prompt(", ".join(high_confidence_tags))
 
         with open(caption_path, "w") as fp:
-            fp.write(tags_str)
+            fp.write(output)
 
 
 if args.file:
@@ -148,78 +140,6 @@ if args.file:
     # Filter tags with confidence >= 0.85
     high_confidence_tags = [tag for tag, confidence in tags if confidence >= 0.8]
 
-    # # Create a filename with the current date and time
-    # current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    # txt_filename = Path(f"{current_time}.txt")
+    output = generate_dart_prompt(", ".join(high_confidence_tags))
 
-    # print(f"High confidence tags have been written to {txt_filename}")
-
-    # if len(sys.argv) != 2:
-    #     print("Usage: python dart.py {tags}")
-    #     sys.exit(1)
-
-    dart_prompt = ", ".join(high_confidence_tags)
-    # print(f"Tags with confidence >= 0.85: {dart_prompt}")
-
-    # DART_MODEL_NAME = "p1atdev/dart-v2-moe-sft"
-
-    # model = MixtralModel.from_pretrained(DART_MODEL_NAME)
-    # tokenizer = DartTokenizer.from_pretrained(DART_MODEL_NAME)
-
-    # config = get_generation_config(
-    #     prompt=compose_prompt(
-    #         copyright="mihoyo",
-    #         character="seele_vollerei",
-    #         rating="general",  # sfw, general, sensitive, nsfw, questionable, explicit
-    #         aspect_ratio="tall",  # ultra_wide, wide, square, tall, ultra_tall
-    #         length="long",  # very_short, short, medium, long, very_long
-    #         identity="none",  # none, lax, strict
-    #         prompt=dart_prompt,
-    #     ),
-    #     tokenizer=tokenizer,
-    #     temperature=1.0,
-    #     top_p=1,
-    #     top_k=100,
-    # )
-
-    # output = model.generate(config)
-    # print(f"Dart output: {output}")
-
-    #####
-
-    DART_MODEL_NAME = "p1atdev/dart-v2-moe-sft"
-
-    tokenizer = AutoTokenizer.from_pretrained(DART_MODEL_NAME)
-    model = AutoModelForCausalLM.from_pretrained(
-        DART_MODEL_NAME, torch_dtype=torch.bfloat16
-    )
-
-    prompt = (
-        f"<|bos|>"
-        f"<copyright>mihoyo</copyright>"
-        f"<character>seele_vollerei</character>"
-        f"<|rating:general|><|aspect_ratio:tall|><|length:long|>"
-        f"<general>{dart_prompt}<|identity:none|><|input_end|>"
-    )
-    inputs = tokenizer(prompt, return_tensors="pt").input_ids
-
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs,
-            do_sample=True,
-            temperature=1.0,
-            top_p=1.0,
-            top_k=100,
-            max_new_tokens=250,
-            num_beams=1,
-        )
-
-    print(
-        ", ".join(
-            [
-                tag
-                for tag in tokenizer.batch_decode(outputs[0], skip_special_tokens=True)
-                if tag.strip() != ""
-            ]
-        )
-    )
+    print(output)
